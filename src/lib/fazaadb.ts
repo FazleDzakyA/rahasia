@@ -1,9 +1,27 @@
-const FAZAA_URL = process.env.NEXT_PUBLIC_FAZAA_URL || 'http://localhost:4000';
+const getBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_FAZAA_URL) {
+    return process.env.NEXT_PUBLIC_FAZAA_URL;
+  }
+  if (typeof window !== 'undefined') {
+    return `${window.location.protocol}//${window.location.hostname}:4000`;
+  }
+  return 'http://localhost:4000';
+};
+
+const getWsUrl = () => {
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${window.location.hostname}:4000/realtime`;
+  }
+  return 'ws://localhost:4000/realtime';
+};
+
 const PROJECT_SLUG = 'fazaachat';
 const API_KEY = process.env.NEXT_PUBLIC_FAZAA_KEY || 'fza_srv_d9401b81f7fb73ca0e45f760084df08ccf52490269ef0f3a';
 
 async function request(endpoint: string, options: RequestInit = {}) {
-  const url = `${FAZAA_URL}/api/v1/projects/${PROJECT_SLUG}${endpoint}`;
+  const baseUrl = getBaseUrl();
+  const url = `${baseUrl}/api/v1/projects/${PROJECT_SLUG}${endpoint}`;
   const headers: Record<string, string> = {
     'x-fazaadb-key': API_KEY,
     ...(options.headers as Record<string, string>),
@@ -35,36 +53,80 @@ async function request(endpoint: string, options: RequestInit = {}) {
 }
 
 export const fazaaChatApi = {
-  baseUrl: FAZAA_URL,
+  getBaseUrl,
+  getWsUrl,
 
-  // Users
-  getUsers: async () => {
-    const res = await request('/tables/chat_users/records?limit=100');
-    return res.data || [];
+  // Authentication & Users
+  login: async (usernameOrEmail: string, password: string) => {
+    const users = await fazaaChatApi.getUsers();
+    const found = users.find(
+      (u: any) =>
+        (u.username.toLowerCase() === usernameOrEmail.toLowerCase() ||
+          u.email.toLowerCase() === usernameOrEmail.toLowerCase()) &&
+        u.password === password
+    );
+
+    if (!found) {
+      throw new Error('Username/email atau password salah!');
+    }
+
+    // Set user online
+    await fazaaChatApi.updateUser(found.id, {
+      is_online: 1,
+      last_seen: new Date().toISOString(),
+    });
+
+    return found;
   },
-  getUserById: async (id: string) => {
-    const res = await request(`/tables/chat_users/records/${id}`);
-    return res.data;
-  },
-  createUser: async (user: {
-    id?: string;
+
+  register: async (params: {
     username: string;
     email: string;
-    password?: string;
+    password: string;
     full_name: string;
     avatar?: string;
     status?: string;
   }) => {
-    const res = await request('/tables/chat_users/records', {
+    const existing = await fazaaChatApi.getUsers();
+    if (existing.some((u: any) => u.username.toLowerCase() === params.username.toLowerCase())) {
+      throw new Error('Username sudah digunakan, silakan pilih username lain!');
+    }
+    if (existing.some((u: any) => u.email.toLowerCase() === params.email.toLowerCase())) {
+      throw new Error('Email sudah terdaftar!');
+    }
+
+    const defaultAvatar = `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(
+      params.username
+    )}`;
+
+    const newUser = await request('/tables/chat_users/records', {
       method: 'POST',
       body: JSON.stringify({
-        ...user,
+        username: params.username.trim().toLowerCase(),
+        email: params.email.trim().toLowerCase(),
+        password: params.password,
+        full_name: params.full_name.trim(),
+        avatar: params.avatar?.trim() || defaultAvatar,
+        status: params.status?.trim() || 'Hey there! I am using fazaaChat.',
         is_online: 1,
         last_seen: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       }),
     });
+
+    return newUser.data;
+  },
+
+  getUsers: async () => {
+    const res = await request('/tables/chat_users/records?limit=100');
+    return res.data || [];
+  },
+
+  getUserById: async (id: string) => {
+    const res = await request(`/tables/chat_users/records/${id}`);
     return res.data;
   },
+
   updateUser: async (id: string, patch: Record<string, any>) => {
     const res = await request(`/tables/chat_users/records/${id}`, {
       method: 'PUT',
@@ -75,7 +137,6 @@ export const fazaaChatApi = {
 
   // Conversations
   getConversations: async (userId: string) => {
-    // 1. Get member rows for this user
     const memberRes = await request(
       `/tables/conversation_members/records?filter=${encodeURIComponent(JSON.stringify({ user_id: userId }))}`
     );
@@ -84,21 +145,15 @@ export const fazaaChatApi = {
 
     const convIds = memberRows.map((m: any) => m.conversation_id);
 
-    // 2. Fetch conversations
     const convRes = await request(
-      `/tables/conversations/records?order=${encodeURIComponent(JSON.stringify([{ column: 'updated_at', direction: 'desc' }]))}&limit=100`
+      `/tables/conversations/records?order=${encodeURIComponent(
+        JSON.stringify([{ column: 'updated_at', direction: 'desc' }])
+      )}&limit=100`
     );
     const allConvs = convRes.data || [];
     return allConvs.filter((c: any) => convIds.includes(c.id));
   },
-  getConversationMembers: async (conversationId: string) => {
-    const res = await request(
-      `/tables/conversation_members/records?filter=${encodeURIComponent(
-        JSON.stringify({ conversation_id: conversationId })
-      )}`
-    );
-    return res.data || [];
-  },
+
   createConversation: async (
     type: 'private' | 'group',
     name: string | null,
@@ -107,7 +162,6 @@ export const fazaaChatApi = {
   ) => {
     const convId = `conv-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-    // Create conversation record
     const conv = await request('/tables/conversations/records', {
       method: 'POST',
       body: JSON.stringify({
@@ -122,7 +176,6 @@ export const fazaaChatApi = {
       }),
     });
 
-    // Add members
     for (const uid of memberUserIds) {
       await request('/tables/conversation_members/records', {
         method: 'POST',
@@ -143,10 +196,11 @@ export const fazaaChatApi = {
     const res = await request(
       `/tables/messages/records?filter=${encodeURIComponent(
         JSON.stringify({ conversation_id: conversationId })
-      )}&order=${encodeURIComponent(JSON.stringify([{ column: 'created_at', direction: 'asc' }]))}&limit=200`
+      )}&order=${encodeURIComponent(JSON.stringify([{ column: 'created_at', direction: 'asc' }]))}&limit=300`
     );
     return res.data || [];
   },
+
   sendMessage: async (params: {
     conversationId: string;
     senderId: string;
@@ -174,7 +228,6 @@ export const fazaaChatApi = {
       }),
     });
 
-    // Update conversation last_message
     await request(`/tables/conversations/records/${params.conversationId}`, {
       method: 'PUT',
       body: JSON.stringify({
@@ -186,20 +239,21 @@ export const fazaaChatApi = {
 
     return created.data;
   },
+
   deleteMessage: async (messageId: string) => {
     return request(`/tables/messages/records/${messageId}`, {
       method: 'DELETE',
     });
   },
 
-  // File Upload via Storage Engine
   uploadMedia: async (file: File) => {
+    const baseUrl = getBaseUrl();
     const formData = new FormData();
     formData.append('file', file);
     formData.append('bucket', 'chat_media');
     formData.append('folder', 'attachments');
 
-    const res = await fetch(`${FAZAA_URL}/api/v1/storage/upload`, {
+    const res = await fetch(`${baseUrl}/api/v1/storage/upload`, {
       method: 'POST',
       headers: {
         'x-project-id': PROJECT_SLUG,
@@ -212,7 +266,7 @@ export const fazaaChatApi = {
     const data = await res.json();
     return {
       ...data.data,
-      absoluteUrl: `${FAZAA_URL}${data.data.publicUrl}`,
+      absoluteUrl: `${baseUrl}${data.data.publicUrl}`,
     };
   },
 };

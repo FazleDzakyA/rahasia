@@ -9,6 +9,7 @@ import {
   Circle,
   MessageSquare,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
 import { useChatStore, ConversationItem, ChatUser } from '../store/useChatStore';
 import { UserSwitcher } from './UserSwitcher';
@@ -16,7 +17,8 @@ import { UserSwitcher } from './UserSwitcher';
 export const Sidebar: React.FC<{
   onOpenNewChat: () => void;
   onOpenSettings: () => void;
-}> = ({ onOpenNewChat, onOpenSettings }) => {
+  onLogout?: () => void;
+}> = ({ onOpenNewChat, onOpenSettings, onLogout }) => {
   const {
     currentUser,
     allUsers,
@@ -97,6 +99,15 @@ export const Sidebar: React.FC<{
           >
             <Settings className="w-4 h-4" />
           </button>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="w-8 h-8 rounded-full ios-glass-card flex items-center justify-center text-slate-300 hover:text-rose-400 transition-colors"
+              title="Keluar (Log Out)"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

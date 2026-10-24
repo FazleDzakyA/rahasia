@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { X, User, Sparkles } from 'lucide-react';
+import { X, User, Sparkles, LogOut } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
 import { fazaaChatApi } from '../lib/fazaadb';
 
 export const SettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-}> = ({ isOpen, onClose }) => {
+  onLogout?: () => void;
+}> = ({ isOpen, onClose, onLogout }) => {
   const { currentUser, setCurrentUser } = useChatStore();
   const [fullName, setFullName] = React.useState(currentUser?.full_name || '');
   const [status, setStatus] = React.useState(currentUser?.status || '');
@@ -96,21 +97,36 @@ export const SettingsModal: React.FC<{
             />
           </div>
 
-          <div className="pt-2 flex justify-end space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl ios-glass-card text-xs text-slate-300"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-5 py-2 rounded-xl bg-[#0A84FF] text-white text-xs font-semibold disabled:opacity-50"
-            >
-              {loading ? 'Saving...' : 'Save Profile'}
-            </button>
+          <div className="pt-2 flex items-center justify-between">
+            {onLogout && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onLogout();
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
+            )}
+            <div className="flex items-center space-x-2 ml-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl ios-glass-card text-xs text-slate-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-5 py-2 rounded-xl bg-[#0A84FF] text-white text-xs font-semibold disabled:opacity-50"
+              >
+                {loading ? 'Saving...' : 'Save Profile'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

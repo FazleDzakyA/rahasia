@@ -3,13 +3,16 @@
 import React from 'react';
 import { useChatStore, ChatUser } from '../store/useChatStore';
 import { fazaaChatApi } from '../lib/fazaadb';
-import { Radio, Users, Check, Sparkles } from 'lucide-react';
+import { Radio, Users, Check, Sparkles, LogOut } from 'lucide-react';
 
 export const UserSwitcher: React.FC = () => {
   const { currentUser, setCurrentUser, allUsers, isWsConnected } = useChatStore();
   const [isOpen, setIsOpen] = React.useState(false);
 
   const switchUser = async (user: ChatUser) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fazaachat_user', JSON.stringify(user));
+    }
     setCurrentUser(user);
     setIsOpen(false);
     // Update online status in fazaaDB
@@ -68,6 +71,21 @@ export const UserSwitcher: React.FC = () => {
                 </button>
               );
             })}
+          </div>
+          <div className="pt-1 mt-1 border-t border-white/10">
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  localStorage.removeItem('fazaachat_user');
+                }
+                setCurrentUser(null);
+                setIsOpen(false);
+              }}
+              className="w-full px-3 py-2 rounded-xl text-left text-xs flex items-center space-x-2 text-rose-400 hover:bg-rose-500/10 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Log Out dari Perangkat Ini</span>
+            </button>
           </div>
         </div>
       )}
