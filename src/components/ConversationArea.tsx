@@ -128,8 +128,9 @@ export const ConversationArea: React.FC<{
       setSelectedFile(null);
       setFilePreview(null);
       setReplyMessage(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to send message:', err);
+      alert('Gagal mengirim pesan: ' + (err.message || 'Periksa koneksi ke server fazaaDB Cloud'));
     } finally {
       setSending(false);
     }
