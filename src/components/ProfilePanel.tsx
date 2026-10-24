@@ -40,8 +40,8 @@ export const ProfilePanel: React.FC<{
     }
 
     const other = allUsers.find(
-      (u) => u.id !== currentUser?.id && activeConversation.id.includes(u.username)
-    ) || allUsers.find((u) => u.id !== currentUser?.id) || allUsers[0];
+      (u) => u && u.id !== currentUser?.id && activeConversation?.id && u.username && activeConversation.id.includes(u.username)
+    ) || allUsers.find((u) => u && u.id !== currentUser?.id) || allUsers[0];
 
     return {
       name: other?.full_name || 'Contact',

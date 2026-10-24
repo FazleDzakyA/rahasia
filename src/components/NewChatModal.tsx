@@ -8,7 +8,8 @@ import { fazaaChatApi } from '../lib/fazaadb';
 export const NewChatModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-}> = ({ isOpen, onClose }) => {
+  onCreated?: () => void;
+}> = ({ isOpen, onClose, onCreated }) => {
   const {
     currentUser,
     allUsers,
@@ -38,6 +39,7 @@ export const NewChatModal: React.FC<{
 
       if (existing) {
         setActiveConversation(existing);
+        onCreated?.();
         onClose();
         return;
       }
@@ -50,6 +52,7 @@ export const NewChatModal: React.FC<{
 
       setConversations([conv, ...conversations]);
       setActiveConversation(conv);
+      onCreated?.();
       onClose();
     } catch (err) {
       console.error('Failed to create direct chat:', err);
@@ -73,6 +76,7 @@ export const NewChatModal: React.FC<{
 
       setConversations([conv, ...conversations]);
       setActiveConversation(conv);
+      onCreated?.();
       onClose();
     } catch (err) {
       console.error('Failed to create group:', err);

@@ -123,7 +123,9 @@ export const ConversationArea: React.FC<{
         replyPreview: replyMessage?.message,
       });
 
-      addMessage(sent);
+      if (sent) {
+        addMessage(sent);
+      }
       setInputMessage('');
       setSelectedFile(null);
       setFilePreview(null);
@@ -238,9 +240,10 @@ export const ConversationArea: React.FC<{
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {messages.map((msg) => {
+        {(messages || []).map((msg) => {
+          if (!msg || !msg.id) return null;
           const isMe = msg.sender_id === currentUser?.id;
-          const senderUser = allUsers.find((u) => u.id === msg.sender_id);
+          const senderUser = (allUsers || []).find((u) => u && u.id === msg.sender_id);
 
           return (
             <div
@@ -248,9 +251,9 @@ export const ConversationArea: React.FC<{
               className={`flex flex-col group ${isMe ? 'items-end' : 'items-start'}`}
             >
               {/* Group sender name */}
-              {!isMe && activeConversation.type === 'group' && (
+              {!isMe && activeConversation?.type === 'group' && (
                 <span className="text-[10px] font-semibold text-slate-400 mb-1 ml-3 font-mono">
-                  {senderUser?.full_name || 'Member'}
+                  {senderUser?.full_name || senderUser?.username || 'Member'}
                 </span>
               )}
 

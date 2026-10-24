@@ -18,7 +18,8 @@ export const Sidebar: React.FC<{
   onOpenNewChat: () => void;
   onOpenSettings: () => void;
   onLogout?: () => void;
-}> = ({ onOpenNewChat, onOpenSettings, onLogout }) => {
+  onSelectConversation?: (conv: ConversationItem) => void;
+}> = ({ onOpenNewChat, onOpenSettings, onLogout, onSelectConversation }) => {
   const {
     currentUser,
     allUsers,
@@ -32,6 +33,13 @@ export const Sidebar: React.FC<{
 
   // Helper to get conversation display title and avatar
   const getConvDetails = (conv: ConversationItem) => {
+    if (!conv) {
+      return {
+        title: 'Chat',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop',
+        isOnline: false,
+      };
+    }
     if (conv.type === 'group') {
       return {
         title: conv.name || 'Group Chat',
@@ -43,17 +51,18 @@ export const Sidebar: React.FC<{
     // Private chat: find the other participant
     // Format: 'conv-user1-user2' or from members
     const otherUser = allUsers.find(
-      (u) => u.id !== currentUser?.id && conv.id.includes(u.username)
-    ) || allUsers.find((u) => u.id !== currentUser?.id) || allUsers[0];
+      (u) => u && u.id !== currentUser?.id && conv.id && u.username && conv.id.includes(u.username)
+    ) || allUsers.find((u) => u && u.id !== currentUser?.id) || allUsers[0];
 
     return {
-      title: otherUser?.full_name || 'Chat',
+      title: otherUser?.full_name || otherUser?.username || 'Chat',
       avatar: otherUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop',
       isOnline: Boolean(otherUser?.is_online),
     };
   };
 
-  const filteredConvs = conversations.filter((c) => {
+  const filteredConvs = (conversations || []).filter((c) => {
+    if (!c) return false;
     if (filterTab === 'direct' && c.type !== 'private') return false;
     if (filterTab === 'groups' && c.type !== 'group') return false;
     if (search.trim()) {
@@ -174,7 +183,12 @@ export const Sidebar: React.FC<{
           return (
             <div
               key={conv.id}
-              onClick={() => setActiveConversation(conv)}
+              onClick={() => {
+                setActiveConversation(conv);
+                if (onSelectConversation) {
+                  onSelectConversation(conv);
+                }
+              }}
               className={`p-3 rounded-2xl cursor-pointer transition-all duration-200 flex items-center space-x-3.5 border ${
                 isSelected
                   ? 'bg-[#0A84FF]/20 border-[#0A84FF]/40 shadow-ios-bubble'

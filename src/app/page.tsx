@@ -166,8 +166,8 @@ export default function ChatApp() {
 
                 // Update conversation last message in sidebar
                 setConversations((prev) =>
-                  prev.map((c) =>
-                    c.id === newMsg.conversation_id
+                  (prev || []).map((c) =>
+                    c && c.id === newMsg.conversation_id
                       ? {
                           ...c,
                           last_message: newMsg.message,
@@ -181,13 +181,13 @@ export default function ChatApp() {
               }
             } else if (data.table === 'conversations') {
               if (data.action === 'created' && data.record) {
-                setConversations((prev) => [data.record, ...prev]);
+                setConversations((prev) => [data.record, ...(prev || [])]);
               }
             } else if (data.table === 'chat_users') {
               // Update user status in list
               if (data.record) {
                 setAllUsers(
-                  allUsers.map((u) => (u.id === data.record.id ? { ...u, ...data.record } : u))
+                  (allUsers || []).map((u) => (u && u.id === data.record.id ? { ...u, ...data.record } : u))
                 );
               }
             }
@@ -242,6 +242,10 @@ export default function ChatApp() {
           onOpenNewChat={() => setIsNewChatOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onLogout={handleLogout}
+          onSelectConversation={(conv) => {
+            setActiveConversation(conv);
+            setMobileView('chat');
+          }}
         />
       </div>
 
@@ -265,6 +269,7 @@ export default function ChatApp() {
       <NewChatModal
         isOpen={isNewChatOpen}
         onClose={() => setIsNewChatOpen(false)}
+        onCreated={() => setMobileView('chat')}
       />
 
       <SettingsModal
