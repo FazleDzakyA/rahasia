@@ -40,15 +40,15 @@ interface ChatState {
   currentUser: ChatUser | null;
   setCurrentUser: (user: ChatUser | null) => void;
   allUsers: ChatUser[];
-  setAllUsers: (users: ChatUser[]) => void;
+  setAllUsers: (users: ChatUser[] | ((prev: ChatUser[]) => ChatUser[])) => void;
   conversations: ConversationItem[];
-  setConversations: (convs: ConversationItem[]) => void;
+  setConversations: (convs: ConversationItem[] | ((prev: ConversationItem[]) => ConversationItem[])) => void;
   activeConversation: ConversationItem | null;
   setActiveConversation: (conv: ConversationItem | null) => void;
   activeMembers: ChatUser[];
-  setActiveMembers: (members: ChatUser[]) => void;
+  setActiveMembers: (members: ChatUser[] | ((prev: ChatUser[]) => ChatUser[])) => void;
   messages: MessageItem[];
-  setMessages: (messages: MessageItem[]) => void;
+  setMessages: (messages: MessageItem[] | ((prev: MessageItem[]) => MessageItem[])) => void;
   addMessage: (message: MessageItem) => void;
   deleteMessageFromState: (id: string) => void;
   replyMessage: MessageItem | null;
@@ -66,26 +66,61 @@ export const useChatStore = create<ChatState>((set) => ({
   currentUser: null,
   setCurrentUser: (user) => set({ currentUser: user }),
   allUsers: [],
-  setAllUsers: (users) => set({ allUsers: users }),
+  setAllUsers: (users) =>
+    set((state) => ({
+      allUsers:
+        typeof users === 'function'
+          ? (users as any)(state.allUsers || [])
+          : Array.isArray(users)
+          ? users
+          : [],
+    })),
   conversations: [],
-  setConversations: (convs) => set({ conversations: convs }),
+  setConversations: (convs) =>
+    set((state) => ({
+      conversations:
+        typeof convs === 'function'
+          ? (convs as any)(state.conversations || [])
+          : Array.isArray(convs)
+          ? convs
+          : [],
+    })),
   activeConversation: null,
   setActiveConversation: (conv) => set({ activeConversation: conv, replyMessage: null }),
   activeMembers: [],
-  setActiveMembers: (members) => set({ activeMembers: members }),
+  setActiveMembers: (members) =>
+    set((state) => ({
+      activeMembers:
+        typeof members === 'function'
+          ? (members as any)(state.activeMembers || [])
+          : Array.isArray(members)
+          ? members
+          : [],
+    })),
   messages: [],
-  setMessages: (messages) => set({ messages }),
+  setMessages: (messages) =>
+    set((state) => ({
+      messages:
+        typeof messages === 'function'
+          ? (messages as any)(state.messages || [])
+          : Array.isArray(messages)
+          ? messages
+          : [],
+    })),
   addMessage: (message) =>
     set((state) => {
       if (!message || !message.id) return state;
+      const currentMessages = Array.isArray(state.messages) ? state.messages : [];
       // Check if already exists to prevent duplicate
-      if (state.messages.some((m) => m && m.id === message.id)) {
+      if (currentMessages.some((m) => m && m.id === message.id)) {
         return state;
       }
-      return { messages: [...state.messages, message] };
+      return { messages: [...currentMessages, message] };
     }),
   deleteMessageFromState: (id) =>
-    set((state) => ({ messages: state.messages.filter((m) => m.id !== id) })),
+    set((state) => ({
+      messages: (Array.isArray(state.messages) ? state.messages : []).filter((m) => m && m.id !== id),
+    })),
   replyMessage: null,
   setReplyMessage: (msg) => set({ replyMessage: msg }),
   typingUsers: new Set(),
@@ -98,7 +133,7 @@ export const useChatStore = create<ChatState>((set) => ({
     }),
   isWsConnected: false,
   setIsWsConnected: (connected) => set({ isWsConnected: connected }),
-  showProfilePanel: true,
+  showProfilePanel: false, // Default to false on mobile & clean initial load
   setShowProfilePanel: (show) => set({ showProfilePanel: show }),
   toggleProfilePanel: () =>
     set((state) => ({ showProfilePanel: !state.showProfilePanel })),

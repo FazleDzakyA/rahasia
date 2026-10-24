@@ -50,7 +50,11 @@ export const NewChatModal: React.FC<{
         [currentUser.id, targetUser.id]
       );
 
-      setConversations([conv, ...conversations]);
+      setConversations((prev) => {
+        const arr = Array.isArray(prev) ? prev : [];
+        if (arr.some((c) => c && c.id === conv.id)) return arr;
+        return [conv, ...arr];
+      });
       setActiveConversation(conv);
       onCreated?.();
       onClose();
@@ -74,7 +78,11 @@ export const NewChatModal: React.FC<{
         'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&h=150&fit=crop'
       );
 
-      setConversations([conv, ...conversations]);
+      setConversations((prev) => {
+        const arr = Array.isArray(prev) ? prev : [];
+        if (arr.some((c) => c && c.id === conv.id)) return arr;
+        return [conv, ...arr];
+      });
       setActiveConversation(conv);
       onCreated?.();
       onClose();

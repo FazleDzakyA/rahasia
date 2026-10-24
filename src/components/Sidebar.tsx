@@ -50,9 +50,10 @@ export const Sidebar: React.FC<{
 
     // Private chat: find the other participant
     // Format: 'conv-user1-user2' or from members
-    const otherUser = allUsers.find(
+    const safeUsers = Array.isArray(allUsers) ? allUsers : [];
+    const otherUser = safeUsers.find(
       (u) => u && u.id !== currentUser?.id && conv.id && u.username && conv.id.includes(u.username)
-    ) || allUsers.find((u) => u && u.id !== currentUser?.id) || allUsers[0];
+    ) || safeUsers.find((u) => u && u.id !== currentUser?.id) || safeUsers[0];
 
     return {
       title: otherUser?.full_name || otherUser?.username || 'Chat',
@@ -61,7 +62,8 @@ export const Sidebar: React.FC<{
     };
   };
 
-  const filteredConvs = (conversations || []).filter((c) => {
+  const safeConvs = Array.isArray(conversations) ? conversations : [];
+  const filteredConvs = safeConvs.filter((c) => {
     if (!c) return false;
     if (filterTab === 'direct' && c.type !== 'private') return false;
     if (filterTab === 'groups' && c.type !== 'group') return false;
@@ -214,7 +216,13 @@ export const Sidebar: React.FC<{
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 truncate leading-relaxed">
-                  {conv.last_message || 'Belum ada pesan'}
+                  {typeof conv.last_message === 'string'
+                    ? conv.last_message
+                    : typeof conv.last_message === 'object' && conv.last_message !== null
+                    ? JSON.stringify(conv.last_message)
+                    : conv.last_message
+                    ? String(conv.last_message)
+                    : 'Belum ada pesan'}
                 </p>
               </div>
             </div>

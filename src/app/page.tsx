@@ -11,28 +11,88 @@ import { ConversationArea } from '../components/ConversationArea';
 import { ProfilePanel } from '../components/ProfilePanel';
 import { NewChatModal } from '../components/NewChatModal';
 import { SettingsModal } from '../components/SettingsModal';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
-export default function ChatApp() {
+function MainChatLayout({
+  onLogout,
+}: {
+  onLogout: () => void;
+}) {
   const {
-    currentUser,
-    setCurrentUser,
-    allUsers,
-    setAllUsers,
-    conversations,
-    setConversations,
     activeConversation,
     setActiveConversation,
-    messages,
-    setMessages,
-    addMessage,
-    deleteMessageFromState,
-    setIsWsConnected,
     showProfilePanel,
   } = useChatStore();
 
   const [isNewChatOpen, setIsNewChatOpen] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [mobileView, setMobileView] = React.useState<'list' | 'chat'>('list');
+
+  return (
+    <div className="flex w-full h-screen overflow-hidden bg-[#111111]">
+      {/* Left Sidebar (Desktop always visible, Mobile conditionally) */}
+      <div
+        className={`h-full ${
+          mobileView === 'chat' ? 'hidden md:flex' : 'flex w-full md:w-auto'
+        }`}
+      >
+        <Sidebar
+          onOpenNewChat={() => setIsNewChatOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onLogout={onLogout}
+          onSelectConversation={(conv) => {
+            setActiveConversation(conv);
+            setMobileView('chat');
+          }}
+        />
+      </div>
+
+      {/* Center Conversation Area */}
+      <div
+        className={`flex-1 h-full flex flex-col min-w-0 ${
+          mobileView === 'list' ? 'hidden md:flex' : 'flex w-full'
+        }`}
+      >
+        <ConversationArea onBackMobile={() => setMobileView('list')} />
+      </div>
+
+      {/* Right Details Profile Panel (Desktop only) */}
+      {showProfilePanel && activeConversation && (
+        <div className="hidden lg:flex h-full">
+          <ProfilePanel onLogout={onLogout} />
+        </div>
+      )}
+
+      {/* Modals */}
+      <NewChatModal
+        isOpen={isNewChatOpen}
+        onClose={() => setIsNewChatOpen(false)}
+        onCreated={() => setMobileView('chat')}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onLogout={onLogout}
+      />
+    </div>
+  );
+}
+
+export default function ChatApp() {
+  const {
+    currentUser,
+    setCurrentUser,
+    setAllUsers,
+    setConversations,
+    activeConversation,
+    setActiveConversation,
+    setMessages,
+    addMessage,
+    deleteMessageFromState,
+    setIsWsConnected,
+  } = useChatStore();
+
   const [authChecked, setAuthChecked] = React.useState(false);
 
   // 1. Check local session and load users on mount
@@ -40,14 +100,16 @@ export default function ChatApp() {
     async function initAuthAndUsers() {
       try {
         const users = await fazaaChatApi.getUsers();
-        setAllUsers(users);
+        setAllUsers(Array.isArray(users) ? users : []);
 
         if (typeof window !== 'undefined') {
           const stored = localStorage.getItem('fazaachat_user');
           if (stored) {
             try {
               const savedUser = JSON.parse(stored);
-              const matched = users.find((u: any) => u.id === savedUser.id);
+              const matched = (Array.isArray(users) ? users : []).find(
+                (u: any) => u && u.id === savedUser.id
+              );
               if (matched) {
                 setCurrentUser(matched);
                 fazaaChatApi
@@ -102,10 +164,11 @@ export default function ChatApp() {
     async function loadConvs() {
       try {
         const convList = await fazaaChatApi.getConversations(currentUser!.id);
-        setConversations(convList);
+        const safeList = Array.isArray(convList) ? convList : [];
+        setConversations(safeList);
 
-        if (convList && convList.length > 0 && !activeConversation) {
-          setActiveConversation(convList[0]);
+        if (safeList.length > 0 && !activeConversation) {
+          setActiveConversation(safeList[0]);
         }
       } catch (err) {
         console.error('Failed to load conversations:', err);
@@ -123,7 +186,7 @@ export default function ChatApp() {
     async function loadMessages() {
       try {
         const msgList = await fazaaChatApi.getMessages(currentConvId);
-        setMessages(msgList);
+        setMessages(Array.isArray(msgList) ? msgList : []);
       } catch (err) {
         console.error('Failed to load messages:', err);
       }
@@ -166,7 +229,7 @@ export default function ChatApp() {
 
                 // Update conversation last message in sidebar
                 setConversations((prev) =>
-                  (prev || []).map((c) =>
+                  (Array.isArray(prev) ? prev : []).map((c) =>
                     c && c.id === newMsg.conversation_id
                       ? {
                           ...c,
@@ -181,13 +244,24 @@ export default function ChatApp() {
               }
             } else if (data.table === 'conversations') {
               if (data.action === 'created' && data.record) {
-                setConversations((prev) => [data.record, ...(prev || [])]);
+                setConversations((prev) => {
+                  const arr = Array.isArray(prev) ? prev : [];
+                  if (arr.some((c) => c && c.id === data.record.id)) return arr;
+                  return [data.record, ...arr];
+                });
+              } else if (data.action === 'updated' && data.record) {
+                setConversations((prev) =>
+                  (Array.isArray(prev) ? prev : []).map((c) =>
+                    c && c.id === data.record.id ? { ...c, ...data.record } : c
+                  )
+                );
               }
             } else if (data.table === 'chat_users') {
-              // Update user status in list
               if (data.record) {
-                setAllUsers(
-                  (allUsers || []).map((u) => (u && u.id === data.record.id ? { ...u, ...data.record } : u))
+                setAllUsers((prev) =>
+                  (Array.isArray(prev) ? prev : []).map((u) =>
+                    u && u.id === data.record.id ? { ...u, ...data.record } : u
+                  )
                 );
               }
             }
@@ -211,7 +285,6 @@ export default function ChatApp() {
     deleteMessageFromState,
     setConversations,
     setIsWsConnected,
-    allUsers,
     setAllUsers,
   ]);
 
@@ -231,52 +304,8 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="flex w-full h-screen overflow-hidden bg-[#111111]">
-      {/* Left Sidebar (Desktop always visible, Mobile conditionally) */}
-      <div
-        className={`h-full ${
-          mobileView === 'chat' ? 'hidden md:flex' : 'flex w-full md:w-auto'
-        }`}
-      >
-        <Sidebar
-          onOpenNewChat={() => setIsNewChatOpen(true)}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onLogout={handleLogout}
-          onSelectConversation={(conv) => {
-            setActiveConversation(conv);
-            setMobileView('chat');
-          }}
-        />
-      </div>
-
-      {/* Center Conversation Area */}
-      <div
-        className={`flex-1 h-full flex flex-col min-w-0 ${
-          mobileView === 'list' ? 'hidden md:flex' : 'flex w-full'
-        }`}
-      >
-        <ConversationArea onBackMobile={() => setMobileView('list')} />
-      </div>
-
-      {/* Right Details Profile Panel (Desktop only) */}
-      {showProfilePanel && activeConversation && (
-        <div className="hidden lg:flex h-full">
-          <ProfilePanel onLogout={handleLogout} />
-        </div>
-      )}
-
-      {/* Modals */}
-      <NewChatModal
-        isOpen={isNewChatOpen}
-        onClose={() => setIsNewChatOpen(false)}
-        onCreated={() => setMobileView('chat')}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onLogout={handleLogout}
-      />
-    </div>
+    <ErrorBoundary>
+      <MainChatLayout onLogout={handleLogout} />
+    </ErrorBoundary>
   );
 }

@@ -65,12 +65,13 @@ export const ConversationArea: React.FC<{
       };
     }
 
-    const other = allUsers.find(
-      (u) => u.id !== currentUser?.id && activeConversation.id.includes(u.username)
-    ) || allUsers.find((u) => u.id !== currentUser?.id) || allUsers[0];
+    const safeUsers = Array.isArray(allUsers) ? allUsers : [];
+    const other = safeUsers.find(
+      (u) => u && u.id !== currentUser?.id && activeConversation?.id && u.username && activeConversation.id.includes(u.username)
+    ) || safeUsers.find((u) => u && u.id !== currentUser?.id) || safeUsers[0];
 
     return {
-      name: other?.full_name || 'Chat',
+      name: other?.full_name || other?.username || 'Chat',
       avatar: other?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop',
       status: other?.is_online ? 'Online' : 'Last seen recently',
       isOnline: Boolean(other?.is_online),
@@ -240,10 +241,11 @@ export const ConversationArea: React.FC<{
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {(messages || []).map((msg) => {
+        {(Array.isArray(messages) ? messages : []).map((msg) => {
           if (!msg || !msg.id) return null;
           const isMe = msg.sender_id === currentUser?.id;
-          const senderUser = (allUsers || []).find((u) => u && u.id === msg.sender_id);
+          const safeUsers = Array.isArray(allUsers) ? allUsers : [];
+          const senderUser = safeUsers.find((u) => u && u.id === msg.sender_id);
 
           return (
             <div
@@ -269,7 +271,11 @@ export const ConversationArea: React.FC<{
                     }`}
                   >
                     <span className="font-semibold block text-[9px] uppercase">Replying:</span>
-                    <span className="line-clamp-1">{msg.reply_preview}</span>
+                    <span className="line-clamp-1">
+                      {typeof msg.reply_preview === 'string'
+                        ? msg.reply_preview
+                        : JSON.stringify(msg.reply_preview)}
+                    </span>
                   </div>
                 )}
 
@@ -294,7 +300,11 @@ export const ConversationArea: React.FC<{
 
                   {/* Message Text */}
                   <p className="text-xs sm:text-[13px] leading-relaxed break-words select-text">
-                    {msg.message}
+                    {typeof msg.message === 'string'
+                      ? msg.message
+                      : typeof msg.message === 'object' && msg.message !== null
+                      ? JSON.stringify(msg.message)
+                      : String(msg.message || '')}
                   </p>
 
                   {/* Timestamp & Read Receipt */}

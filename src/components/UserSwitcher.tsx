@@ -46,7 +46,7 @@ export const UserSwitcher: React.FC = () => {
             Switch Active User (Realtime Test)
           </div>
           <div className="space-y-1 py-1">
-            {allUsers.map((u) => {
+            {(Array.isArray(allUsers) ? allUsers : []).filter(Boolean).map((u) => {
               const isActive = currentUser.id === u.id;
               return (
                 <button

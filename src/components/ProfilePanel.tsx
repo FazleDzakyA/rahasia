@@ -1,21 +1,18 @@
 'use client';
 
 import React from 'react';
+import { useChatStore } from '../store/useChatStore';
 import {
   X,
-  Bell,
-  Lock,
   Image as ImageIcon,
   Users,
   Shield,
+  Bell,
   LogOut,
-  ExternalLink,
-  Sparkles,
 } from 'lucide-react';
-import { useChatStore } from '../store/useChatStore';
 
 export const ProfilePanel: React.FC<{
-  onLogout: () => void;
+  onLogout?: () => void;
 }> = ({ onLogout }) => {
   const {
     currentUser,
@@ -28,6 +25,9 @@ export const ProfilePanel: React.FC<{
 
   if (!showProfilePanel || !activeConversation) return null;
 
+  const safeUsers = Array.isArray(allUsers) ? allUsers : [];
+  const safeMessages = Array.isArray(messages) ? messages : [];
+
   // Determine chat partner
   const getPartner = () => {
     if (activeConversation.type === 'group') {
@@ -39,12 +39,12 @@ export const ProfilePanel: React.FC<{
       };
     }
 
-    const other = allUsers.find(
+    const other = safeUsers.find(
       (u) => u && u.id !== currentUser?.id && activeConversation?.id && u.username && activeConversation.id.includes(u.username)
-    ) || allUsers.find((u) => u && u.id !== currentUser?.id) || allUsers[0];
+    ) || safeUsers.find((u) => u && u.id !== currentUser?.id) || safeUsers[0];
 
     return {
-      name: other?.full_name || 'Contact',
+      name: other?.full_name || other?.username || 'Contact',
       avatar: other?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop',
       status: other?.status || 'Active on fazaaChat',
       username: other?.username,
@@ -54,7 +54,7 @@ export const ProfilePanel: React.FC<{
   };
 
   const partner = getPartner();
-  const mediaMessages = messages.filter((m) => m.type === 'image' && m.file_url);
+  const mediaMessages = safeMessages.filter((m) => m && m.type === 'image' && m.file_url);
 
   return (
     <aside className="w-80 h-screen ios-glass border-l border-white/10 flex flex-col shrink-0 z-10 select-none overflow-y-auto">
@@ -110,7 +110,7 @@ export const ProfilePanel: React.FC<{
             <div
               key={m.id}
               className="h-20 rounded-xl overflow-hidden bg-black/40 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => window.open(m.file_url, '_blank')}
+              onClick={() => m.file_url && window.open(m.file_url, '_blank')}
             >
               <img src={m.file_url} alt="" className="w-full h-full object-cover" />
             </div>
@@ -129,15 +129,19 @@ export const ProfilePanel: React.FC<{
         <div className="p-5 space-y-3 border-b border-white/10">
           <div className="flex items-center space-x-2 text-xs font-bold text-white">
             <Users className="w-4 h-4 text-blue-400" />
-            <span>Group Members ({allUsers.length})</span>
+            <span>Group Members ({safeUsers.length})</span>
           </div>
 
           <div className="space-y-2">
-            {allUsers.map((u) => (
+            {safeUsers.filter(Boolean).map((u) => (
               <div key={u.id} className="flex items-center justify-between text-xs">
                 <div className="flex items-center space-x-2.5">
-                  <img src={u.avatar} alt="" className="w-7 h-7 rounded-full object-cover" />
-                  <span className="text-slate-200 truncate">{u.full_name}</span>
+                  <img
+                    src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop'}
+                    alt=""
+                    className="w-7 h-7 rounded-full object-cover"
+                  />
+                  <span className="text-slate-200 truncate">{u.full_name || u.username || 'Member'}</span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono">
                   {u.id === currentUser?.id ? 'You' : 'Member'}
