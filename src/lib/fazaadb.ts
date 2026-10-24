@@ -9,6 +9,16 @@ const getBaseUrl = () => {
 };
 
 const getWsUrl = () => {
+  if (process.env.NEXT_PUBLIC_FAZAA_WS_URL) {
+    return process.env.NEXT_PUBLIC_FAZAA_WS_URL;
+  }
+  if (process.env.NEXT_PUBLIC_FAZAA_URL) {
+    try {
+      const u = new URL(process.env.NEXT_PUBLIC_FAZAA_URL);
+      const wsProtocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${wsProtocol}//${u.host}/realtime`;
+    } catch {}
+  }
   if (typeof window !== 'undefined') {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${proto}//${window.location.hostname}:4000/realtime`;
