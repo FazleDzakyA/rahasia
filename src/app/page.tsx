@@ -118,10 +118,11 @@ export default function ChatApp() {
   // 3. Load messages whenever activeConversation changes
   React.useEffect(() => {
     if (!activeConversation) return;
+    const currentConvId = activeConversation.id;
 
     async function loadMessages() {
       try {
-        const msgList = await fazaaChatApi.getMessages(activeConversation.id);
+        const msgList = await fazaaChatApi.getMessages(currentConvId);
         setMessages(msgList);
       } catch (err) {
         console.error('Failed to load messages:', err);
