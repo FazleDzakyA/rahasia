@@ -26,6 +26,8 @@ export const UserSwitcher: React.FC = () => {
 
   if (!currentUser) return null;
 
+  const displayName = (currentUser.full_name || currentUser.username || 'User').split(' ')[0];
+
   return (
     <div className="relative">
       <button
@@ -34,7 +36,7 @@ export const UserSwitcher: React.FC = () => {
         title="Simulasikan Device A / Device B untuk Realtime Test"
       >
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="truncate max-w-[120px]">{currentUser.full_name.split(' ')[0]} (Test Device)</span>
+        <span className="truncate max-w-[120px]">{displayName} (Test Device)</span>
         <Sparkles className="w-3.5 h-3.5 text-blue-400" />
       </button>
 

@@ -145,6 +145,17 @@ export const ConversationArea: React.FC<{
     }
   };
 
+  const formatTime = (timeStr?: string | null) => {
+    if (!timeStr) return '';
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
   const quickEmojis = ['😀', '❤️', '👍', '🔥', '😂', '🎉', '🚀', '🙏'];
 
   if (!activeConversation) {
@@ -289,12 +300,7 @@ export const ConversationArea: React.FC<{
                       isMe ? 'text-white/80' : 'text-slate-400'
                     }`}
                   >
-                    <span>
-                      {new Date(msg.created_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
+                    <span>{formatTime(msg.created_at)}</span>
                     {isMe && (
                       <CheckCheck
                         className={`w-3.5 h-3.5 ${

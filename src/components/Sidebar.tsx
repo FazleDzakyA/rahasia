@@ -63,6 +63,17 @@ export const Sidebar: React.FC<{
     return true;
   });
 
+  const formatTime = (timeStr?: string | null) => {
+    if (!timeStr) return '';
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
   return (
     <aside className="w-full md:w-80 lg:w-96 h-screen flex flex-col ios-glass border-r border-white/10 select-none z-10 shrink-0">
       {/* Top Header: Current User & Actions */}
@@ -185,12 +196,7 @@ export const Sidebar: React.FC<{
                 <div className="flex items-center justify-between mb-0.5">
                   <h4 className="text-xs font-bold text-white truncate">{title}</h4>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    {conv.last_message_time
-                      ? new Date(conv.last_message_time).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : ''}
+                    {formatTime(conv.last_message_time)}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 truncate leading-relaxed">

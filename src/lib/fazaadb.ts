@@ -128,40 +128,59 @@ export const fazaaChatApi = {
   },
 
   getUsers: async () => {
-    const res = await request('/tables/chat_users/records?limit=100');
-    return res.data || [];
+    try {
+      const res = await request('/tables/chat_users/records?limit=100');
+      return Array.isArray(res?.data) ? res.data : [];
+    } catch (err) {
+      console.warn('Failed to get users:', err);
+      return [];
+    }
   },
 
   getUserById: async (id: string) => {
-    const res = await request(`/tables/chat_users/records/${id}`);
-    return res.data;
+    try {
+      const res = await request(`/tables/chat_users/records/${id}`);
+      return res?.data || null;
+    } catch {
+      return null;
+    }
   },
 
   updateUser: async (id: string, patch: Record<string, any>) => {
-    const res = await request(`/tables/chat_users/records/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(patch),
-    });
-    return res.data;
+    try {
+      const res = await request(`/tables/chat_users/records/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(patch),
+      });
+      return res?.data;
+    } catch (err) {
+      console.warn('Failed to update user:', err);
+      return null;
+    }
   },
 
   // Conversations
   getConversations: async (userId: string) => {
-    const memberRes = await request(
-      `/tables/conversation_members/records?filter=${encodeURIComponent(JSON.stringify({ user_id: userId }))}`
-    );
-    const memberRows = memberRes.data || [];
-    if (memberRows.length === 0) return [];
+    try {
+      const memberRes = await request(
+        `/tables/conversation_members/records?filter=${encodeURIComponent(JSON.stringify({ user_id: userId }))}`
+      );
+      const memberRows = Array.isArray(memberRes?.data) ? memberRes.data : [];
+      if (memberRows.length === 0) return [];
 
-    const convIds = memberRows.map((m: any) => m.conversation_id);
+      const convIds = memberRows.map((m: any) => m.conversation_id);
 
-    const convRes = await request(
-      `/tables/conversations/records?order=${encodeURIComponent(
-        JSON.stringify([{ column: 'updated_at', direction: 'desc' }])
-      )}&limit=100`
-    );
-    const allConvs = convRes.data || [];
-    return allConvs.filter((c: any) => convIds.includes(c.id));
+      const convRes = await request(
+        `/tables/conversations/records?order=${encodeURIComponent(
+          JSON.stringify([{ column: 'updated_at', direction: 'desc' }])
+        )}&limit=100`
+      );
+      const allConvs = Array.isArray(convRes?.data) ? convRes.data : [];
+      return allConvs.filter((c: any) => convIds.includes(c.id));
+    } catch (err) {
+      console.warn('Failed to get conversations:', err);
+      return [];
+    }
   },
 
   createConversation: async (
@@ -203,12 +222,17 @@ export const fazaaChatApi = {
 
   // Messages
   getMessages: async (conversationId: string) => {
-    const res = await request(
-      `/tables/messages/records?filter=${encodeURIComponent(
-        JSON.stringify({ conversation_id: conversationId })
-      )}&order=${encodeURIComponent(JSON.stringify([{ column: 'created_at', direction: 'asc' }]))}&limit=300`
-    );
-    return res.data || [];
+    try {
+      const res = await request(
+        `/tables/messages/records?filter=${encodeURIComponent(
+          JSON.stringify({ conversation_id: conversationId })
+        )}&order=${encodeURIComponent(JSON.stringify([{ column: 'created_at', direction: 'asc' }]))}&limit=300`
+      );
+      return Array.isArray(res?.data) ? res.data : [];
+    } catch (err) {
+      console.warn('Failed to get messages:', err);
+      return [];
+    }
   },
 
   sendMessage: async (params: {
