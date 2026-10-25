@@ -28,8 +28,30 @@ function MainChatLayout({
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [mobileView, setMobileView] = React.useState<'list' | 'chat'>('list');
 
+  const goBackToList = React.useCallback(() => {
+    setMobileView('list');
+    setActiveConversation(null);
+  }, [setActiveConversation]);
+
+  // Intercept hardware/browser back button on mobile
+  // When entering chat view, push a history entry so back button goes to list, not exits app
+  React.useEffect(() => {
+    if (mobileView === 'chat') {
+      // Push dummy history state to capture back button
+      window.history.pushState({ fazaaChat: 'chat' }, '');
+
+      const handlePopState = (e: PopStateEvent) => {
+        // Back pressed — go to list instead of leaving the page
+        goBackToList();
+      };
+
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+    }
+  }, [mobileView, goBackToList]);
+
   return (
-    <div className="flex w-full h-screen overflow-hidden bg-[#111111]">
+    <div className="flex w-full h-[100dvh] overflow-hidden bg-[#111111]">
       {/* Left Sidebar (Desktop always visible, Mobile conditionally) */}
       <div
         className={`h-full ${
@@ -53,7 +75,7 @@ function MainChatLayout({
           mobileView === 'list' ? 'hidden md:flex' : 'flex w-full'
         }`}
       >
-        <ConversationArea onBackMobile={() => setMobileView('list')} />
+        <ConversationArea onBackMobile={goBackToList} />
       </div>
 
       {/* Right Details Profile Panel (Desktop only) */}

@@ -183,20 +183,19 @@ export const ConversationArea: React.FC<{
   }
 
   return (
-    <div className="flex-1 h-screen flex flex-col relative min-w-0 bg-[#111111]">
-      {/* Conversation Top Header */}
-      <header className="h-16 px-4 ios-glass border-b border-white/10 flex items-center justify-between shrink-0 z-10">
+    <div className="flex-1 h-[100dvh] h-screen flex flex-col relative min-w-0 bg-[#111111] overflow-hidden">
+      {/* Conversation Top Header — sticky so it never scrolls away on mobile */}
+      <header className="sticky top-0 h-16 px-4 ios-glass border-b border-white/10 flex items-center justify-between shrink-0 z-20">
         <div className="flex items-center space-x-3">
           <button
             onClick={() => {
               if (onBackMobile) onBackMobile();
-              setActiveConversation(null);
             }}
-            className="p-1.5 -ml-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center gap-1 transition-all border border-white/10"
+            className="p-1.5 -ml-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center gap-1 transition-all border border-white/10 active:scale-95"
             title="Kembali ke Daftar Obrolan"
           >
             <ChevronLeft className="w-5 h-5 text-blue-400" />
-            <span className="text-xs font-semibold text-blue-400 md:hidden">Kembali</span>
+            <span className="text-xs font-semibold text-blue-400">Kembali</span>
           </button>
 
           <div className="relative">
@@ -250,7 +249,7 @@ export const ConversationArea: React.FC<{
       </header>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
         {(Array.isArray(messages) ? messages : []).map((msg) => {
           if (!msg || !msg.id) return null;
           const isMe = msg.sender_id === currentUser?.id;
