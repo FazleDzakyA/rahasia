@@ -131,12 +131,6 @@ export const AuthScreen: React.FC = () => {
     }
   };
 
-  const quickFillUser = (u: string, p: string = 'password123') => {
-    setLoginIdentifier(u);
-    setLoginPassword(p);
-    setErrorMsg(null);
-  };
-
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-[#111111] overflow-hidden select-none">
       {/* Ambient iOS 16 Glass Glow Orbs */}
@@ -260,46 +254,6 @@ export const AuthScreen: React.FC = () => {
                 </>
               )}
             </button>
-
-            {/* Quick Demo Accounts for Multi-Device LAN Testing */}
-            <div className="mt-5 pt-4 border-t border-white/10">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-                  <Smartphone className="w-3.5 h-3.5 text-blue-400" />
-                  Tes Cepat Akun Contoh:
-                </span>
-                <span className="text-[10px] text-slate-500 font-mono">1-Klik Isi</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => quickFillUser('faza')}
-                  className="p-2 rounded-xl ios-glass-card hover:bg-white/10 text-left border border-white/5 transition-colors"
-                >
-                  <p className="text-xs font-bold text-white truncate">Faza</p>
-                  <p className="text-[10px] text-blue-400 font-mono truncate">@faza</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => quickFillUser('sarah')}
-                  className="p-2 rounded-xl ios-glass-card hover:bg-white/10 text-left border border-white/5 transition-colors"
-                >
-                  <p className="text-xs font-bold text-white truncate">Sarah</p>
-                  <p className="text-[10px] text-purple-400 font-mono truncate">@sarah</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => quickFillUser('budi')}
-                  className="p-2 rounded-xl ios-glass-card hover:bg-white/10 text-left border border-white/5 transition-colors"
-                >
-                  <p className="text-xs font-bold text-white truncate">Budi</p>
-                  <p className="text-[10px] text-emerald-400 font-mono truncate">@budi</p>
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-500 mt-2 text-center">
-                Atau daftar akun baru di tab sebelah untuk akun khusus perangkat Anda.
-              </p>
-            </div>
           </form>
         ) : (
           /* Tab 2: REGISTER FORM */

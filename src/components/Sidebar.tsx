@@ -12,7 +12,6 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useChatStore, ConversationItem, ChatUser } from '../store/useChatStore';
-import { UserSwitcher } from './UserSwitcher';
 
 export const Sidebar: React.FC<{
   onOpenNewChat: () => void;
@@ -131,12 +130,6 @@ export const Sidebar: React.FC<{
             </button>
           )}
         </div>
-      </div>
-
-      {/* Simulator Device Switcher Bar */}
-      <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between text-xs">
-        <span className="text-[11px] text-slate-400">Multi-Device Test:</span>
-        <UserSwitcher />
       </div>
 
       {/* Search Input */}

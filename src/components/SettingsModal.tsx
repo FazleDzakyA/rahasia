@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, User, Sparkles, LogOut } from 'lucide-react';
+import { X, User, Sparkles, LogOut, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore';
 import { fazaaChatApi } from '../lib/fazaadb';
 
@@ -15,16 +15,35 @@ export const SettingsModal: React.FC<{
   const [status, setStatus] = React.useState(currentUser?.status || '');
   const [avatar, setAvatar] = React.useState(currentUser?.avatar || '');
   const [loading, setLoading] = React.useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
     if (currentUser) {
-      setFullName(currentUser.full_name);
-      setStatus(currentUser.status);
-      setAvatar(currentUser.avatar);
+      setFullName(currentUser.full_name || '');
+      setStatus(currentUser.status || '');
+      setAvatar(currentUser.avatar || '');
     }
   }, [currentUser]);
 
   if (!isOpen || !currentUser) return null;
+
+  const handleAvatarFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    try {
+      const uploadRes = await fazaaChatApi.uploadMedia(file);
+      if (uploadRes?.absoluteUrl) {
+        setAvatar(uploadRes.absoluteUrl);
+      }
+    } catch (err: any) {
+      alert('Gagal mengunggah foto profil: ' + (err.message || ''));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +56,19 @@ export const SettingsModal: React.FC<{
         avatar: avatar.trim(),
       });
 
-      setCurrentUser(updated);
+      const updatedUser = {
+        ...currentUser,
+        full_name: fullName.trim(),
+        status: status.trim(),
+        avatar: avatar.trim(),
+      };
+      setCurrentUser(updatedUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fazaachat_user', JSON.stringify(updatedUser));
+      }
       onClose();
-    } catch (err) {
-      alert('Gagal memperbarui profil.');
+    } catch (err: any) {
+      alert('Gagal memperbarui profil: ' + (err.message || ''));
     } finally {
       setLoading(false);
     }
@@ -57,12 +85,43 @@ export const SettingsModal: React.FC<{
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
-          <div className="flex flex-col items-center space-y-2">
-            <img
-              src={avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop'}
-              alt=""
-              className="w-20 h-20 rounded-full object-cover border-2 border-white/20 shadow-lg"
+          <div className="flex flex-col items-center space-y-2.5">
+            <div className="relative group">
+              <img
+                src={avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop'}
+                alt=""
+                className="w-20 h-20 rounded-full object-cover border-2 border-white/20 shadow-lg"
+              />
+            </div>
+
+            {/* Hidden file input for album / gallery */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFileSelect}
             />
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-medium flex items-center space-x-1.5 transition-colors border border-white/10 active:scale-95"
+            >
+              {uploadingAvatar ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                  <span>Mengunggah...</span>
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Pilih dari Album / Galeri</span>
+                </>
+              )}
+            </button>
+
             <p className="text-xs text-slate-400 font-mono">@{currentUser.username}</p>
           </div>
 
@@ -121,7 +180,7 @@ export const SettingsModal: React.FC<{
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || uploadingAvatar}
                 className="px-5 py-2 rounded-xl bg-[#0A84FF] text-white text-xs font-semibold disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Profile'}

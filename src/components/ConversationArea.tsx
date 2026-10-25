@@ -28,6 +28,7 @@ export const ConversationArea: React.FC<{
     currentUser,
     allUsers,
     activeConversation,
+    setActiveConversation,
     messages,
     addMessage,
     deleteMessageFromState,
@@ -43,6 +44,7 @@ export const ConversationArea: React.FC<{
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [filePreview, setFilePreview] = React.useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
+  const [activeMsgId, setActiveMsgId] = React.useState<string | null>(null);
 
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -139,12 +141,17 @@ export const ConversationArea: React.FC<{
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!confirm('Apakah Anda yakin ingin menghapus pesan ini untuk semua orang?')) {
+      return;
+    }
     try {
       await fazaaChatApi.deleteMessage(id);
       deleteMessageFromState(id);
-    } catch (err) {
-      alert('Gagal menghapus pesan.');
+      setActiveMsgId(null);
+    } catch (err: any) {
+      alert('Gagal menghapus pesan: ' + (err.message || ''));
     }
   };
 
@@ -180,14 +187,17 @@ export const ConversationArea: React.FC<{
       {/* Conversation Top Header */}
       <header className="h-16 px-4 ios-glass border-b border-white/10 flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center space-x-3">
-          {onBackMobile && (
-            <button
-              onClick={onBackMobile}
-              className="md:hidden p-1.5 rounded-full ios-glass text-slate-300"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (onBackMobile) onBackMobile();
+              setActiveConversation(null);
+            }}
+            className="p-1.5 -ml-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center gap-1 transition-all border border-white/10"
+            title="Kembali ke Daftar Obrolan"
+          >
+            <ChevronLeft className="w-5 h-5 text-blue-400" />
+            <span className="text-xs font-semibold text-blue-400 md:hidden">Kembali</span>
+          </button>
 
           <div className="relative">
             <img
@@ -246,11 +256,15 @@ export const ConversationArea: React.FC<{
           const isMe = msg.sender_id === currentUser?.id;
           const safeUsers = Array.isArray(allUsers) ? allUsers : [];
           const senderUser = safeUsers.find((u) => u && u.id === msg.sender_id);
+          const isImage =
+            msg.type === 'image' ||
+            (msg.file_url && /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(msg.file_url));
+          const isActionOpen = activeMsgId === msg.id;
 
           return (
             <div
               key={msg.id}
-              className={`flex flex-col group ${isMe ? 'items-end' : 'items-start'}`}
+              className={`flex flex-col group relative ${isMe ? 'items-end' : 'items-start'}`}
             >
               {/* Group sender name */}
               {!isMe && activeConversation?.type === 'group' && (
@@ -259,8 +273,44 @@ export const ConversationArea: React.FC<{
                 </span>
               )}
 
-              {/* Message Bubble */}
-              <div className="relative max-w-[85%] sm:max-w-[70%] group">
+              {/* Message Bubble Container */}
+              <div
+                className="relative max-w-[85%] sm:max-w-[70%]"
+                onClick={() => setActiveMsgId(isActionOpen ? null : msg.id)}
+              >
+                {/* Floating Quick Action Pill (Mobile tap toggle & Desktop hover) */}
+                <div
+                  className={`absolute -top-3.5 ${
+                    isMe ? 'right-2' : 'left-2'
+                  } z-20 transition-all duration-150 flex items-center space-x-1 px-2 py-0.5 rounded-full bg-[#1c1c1e] border border-white/20 shadow-2xl backdrop-blur-md ${
+                    isActionOpen
+                      ? 'opacity-100 scale-100 pointer-events-auto'
+                      : 'opacity-0 scale-95 pointer-events-none md:group-hover:opacity-100 md:group-hover:scale-100 md:group-hover:pointer-events-auto'
+                  }`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReplyMessage(msg);
+                      setActiveMsgId(null);
+                    }}
+                    className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1 text-[10px]"
+                    title="Balas Pesan"
+                  >
+                    <Reply className="w-3 h-3 text-blue-400" />
+                    <span className="hidden sm:inline">Balas</span>
+                  </button>
+                  <button
+                    onClick={(e) => handleDelete(msg.id, e)}
+                    className="p-1 rounded-full text-slate-300 hover:text-rose-400 hover:bg-rose-500/10 transition-colors flex items-center gap-1 text-[10px]"
+                    title="Hapus Pesan"
+                  >
+                    <Trash2 className="w-3 h-3 text-rose-400" />
+                    <span className="hidden sm:inline text-rose-400">Hapus</span>
+                  </button>
+                </div>
+
                 {/* Reply context quote if message is reply */}
                 {msg.reply_preview && (
                   <div
@@ -287,25 +337,48 @@ export const ConversationArea: React.FC<{
                   }`}
                 >
                   {/* Photo / Media Preview */}
-                  {msg.type === 'image' && msg.file_url && (
-                    <div className="mb-2 rounded-2xl overflow-hidden max-h-72">
+                  {isImage && msg.file_url && (
+                    <div className="mb-2 rounded-2xl overflow-hidden max-h-72 bg-black/25 border border-white/10">
                       <img
                         src={msg.file_url}
-                        alt=""
-                        className="w-full h-full object-cover cursor-pointer hover:scale-[1.02] transition-transform"
-                        onClick={() => window.open(msg.file_url, '_blank')}
+                        alt="Photo"
+                        className="w-full h-auto max-h-72 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(msg.file_url, '_blank');
+                        }}
                       />
                     </div>
                   )}
 
+                  {/* Non-image attachment */}
+                  {!isImage && msg.file_url && (
+                    <div className="mb-2">
+                      <a
+                        href={msg.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center space-x-2 p-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-blue-300 underline"
+                      >
+                        <Paperclip className="w-3.5 h-3.5" />
+                        <span>Unduh Lampiran File</span>
+                      </a>
+                    </div>
+                  )}
+
                   {/* Message Text */}
-                  <p className="text-xs sm:text-[13px] leading-relaxed break-words select-text">
-                    {typeof msg.message === 'string'
-                      ? msg.message
-                      : typeof msg.message === 'object' && msg.message !== null
-                      ? JSON.stringify(msg.message)
-                      : String(msg.message || '')}
-                  </p>
+                  {msg.message &&
+                    msg.message !== 'Image Attachment' &&
+                    msg.message !== 'File Attachment' && (
+                      <p className="text-xs sm:text-[13px] leading-relaxed break-words select-text">
+                        {typeof msg.message === 'string'
+                          ? msg.message
+                          : typeof msg.message === 'object' && msg.message !== null
+                          ? JSON.stringify(msg.message)
+                          : String(msg.message || '')}
+                      </p>
+                    )}
 
                   {/* Timestamp & Read Receipt */}
                   <div
@@ -322,28 +395,6 @@ export const ConversationArea: React.FC<{
                       />
                     )}
                   </div>
-                </div>
-
-                {/* Floating Action Menu (Reply & Delete) */}
-                <div
-                  className={`absolute top-0 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1 z-10 ${
-                    isMe ? 'right-full mr-2' : 'left-full ml-2'
-                  }`}
-                >
-                  <button
-                    onClick={() => setReplyMessage(msg)}
-                    className="p-1.5 rounded-full ios-glass-card text-slate-300 hover:text-white"
-                    title="Reply"
-                  >
-                    <Reply className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(msg.id)}
-                    className="p-1.5 rounded-full ios-glass-card text-slate-300 hover:text-rose-400"
-                    title="Delete message"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               </div>
             </div>

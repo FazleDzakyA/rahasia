@@ -49,9 +49,33 @@ const getWsUrl = () => {
 const PROJECT_SLUG = 'fazaachat';
 const API_KEY = process.env.NEXT_PUBLIC_FAZAA_KEY || 'fza_srv_d9401b81f7fb73ca0e45f760084df08ccf52490269ef0f3a';
 
+let isSyncing = false;
+export async function autoDiscoverServerUrl(): Promise<string> {
+  if (typeof window === 'undefined' || isSyncing) return getBaseUrl();
+  isSyncing = true;
+  try {
+    const res = await fetch(
+      `https://raw.githubusercontent.com/FazleDzakyA/rahasia/main/public/server-url.json?t=${Date.now()}`,
+      { cache: 'no-store' }
+    ).catch(() => fetch('/server-url.json?t=' + Date.now()).catch(() => null));
+
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data && data.url && data.url.startsWith('http')) {
+        const clean = data.url.replace(/\/+$/, '');
+        localStorage.setItem('fazaadb_api_url', clean);
+        return clean;
+      }
+    }
+  } catch {} finally {
+    isSyncing = false;
+  }
+  return getBaseUrl();
+}
+
 async function request(endpoint: string, options: RequestInit = {}) {
-  const baseUrl = getBaseUrl();
-  const url = `${baseUrl}/api/v1/projects/${PROJECT_SLUG}${endpoint}`;
+  let baseUrl = getBaseUrl();
+  let url = `${baseUrl}/api/v1/projects/${PROJECT_SLUG}${endpoint}`;
   const headers: Record<string, string> = {
     'x-fazaadb-key': API_KEY,
     ...(options.headers as Record<string, string>),
@@ -61,27 +85,46 @@ async function request(endpoint: string, options: RequestInit = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  if (!res.ok) {
-    let errorMsg = `HTTP Error ${res.status}`;
-    try {
-      const errJson = await res.json();
-      errorMsg = errJson.error || errJson.message || errorMsg;
-    } catch {}
-    throw new Error(errorMsg);
+    if (!res.ok) {
+      let errorMsg = `HTTP Error ${res.status}`;
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.error || errJson.message || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    return res.json();
+  } catch (err: any) {
+    // If fetch failed, attempt auto-discovery of live server URL and retry once
+    const msg = String(err?.message || '');
+    if (msg.includes('fetch') || msg.includes('Network') || msg.includes('Failed')) {
+      try {
+        const discoveredUrl = await autoDiscoverServerUrl();
+        if (discoveredUrl && discoveredUrl !== baseUrl) {
+          url = `${discoveredUrl}/api/v1/projects/${PROJECT_SLUG}${endpoint}`;
+          const retryRes = await fetch(url, { ...options, headers });
+          if (retryRes.ok) {
+            return retryRes.json();
+          }
+        }
+      } catch {}
+    }
+    throw err;
   }
-
-  return res.json();
 }
 
 export const fazaaChatApi = {
   getBaseUrl,
   getWsUrl,
   getServerUrl: getBaseUrl,
+  autoDiscoverServerUrl,
   setServerUrl: (url: string) => {
     if (typeof window !== 'undefined') {
       if (!url || !url.trim()) {
@@ -175,19 +218,27 @@ export const fazaaChatApi = {
 
   updateUser: async (
     id: string,
-    data: { is_online?: number | boolean; last_seen?: string; status?: string }
+    data: {
+      is_online?: number | boolean;
+      last_seen?: string;
+      status?: string;
+      avatar?: string;
+      full_name?: string;
+    }
   ) => {
     try {
       const payload: Record<string, any> = { ...data };
       if (typeof payload.is_online === 'boolean') {
         payload.is_online = payload.is_online ? 1 : 0;
       }
-      return await request(`/tables/chat_users/records/${id}`, {
+      const res = await request(`/tables/chat_users/records/${id}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
       });
+      return res?.data;
     } catch (err) {
-      console.warn('Failed to update user status:', err);
+      console.warn('Failed to update user profile:', err);
+      throw err;
     }
   },
 
@@ -308,6 +359,20 @@ export const fazaaChatApi = {
     return created.data;
   },
 
+  getConversationMembers: async (conversationId: string) => {
+    try {
+      const res = await request(
+        `/tables/conversation_members/records?filter=${encodeURIComponent(
+          JSON.stringify({ conversation_id: conversationId })
+        )}`
+      );
+      return Array.isArray(res?.data) ? res.data : [];
+    } catch (err) {
+      console.warn('Failed to get conversation members:', err);
+      return [];
+    }
+  },
+
   deleteMessage: async (messageId: string) => {
     return request(`/tables/messages/records/${messageId}`, {
       method: 'DELETE',
@@ -328,13 +393,21 @@ export const fazaaChatApi = {
     });
 
     if (!res.ok) {
-      throw new Error(`Upload gagal: status ${res.status}`);
+      let errTxt = `Status ${res.status}`;
+      try {
+        const j = await res.json();
+        errTxt = j.error || j.message || errTxt;
+      } catch {}
+      throw new Error(`Upload gagal: ${errTxt}`);
     }
 
     const data = await res.json();
+    const relUrl = data.data.publicUrl || data.data.url || '';
+    const absoluteUrl = relUrl.startsWith('http') ? relUrl : `${baseUrl}${relUrl}`;
+
     return {
       path: data.data.path,
-      absoluteUrl: `${baseUrl}${data.data.url}`,
+      absoluteUrl,
     };
   },
 };

@@ -83,10 +83,12 @@ export default function ChatApp() {
   const {
     currentUser,
     setCurrentUser,
+    allUsers,
     setAllUsers,
     setConversations,
     activeConversation,
     setActiveConversation,
+    setActiveMembers,
     setMessages,
     addMessage,
     deleteMessageFromState,
@@ -99,6 +101,7 @@ export default function ChatApp() {
   React.useEffect(() => {
     async function initAuthAndUsers() {
       try {
+        await fazaaChatApi.autoDiscoverServerUrl();
         const users = await fazaaChatApi.getUsers();
         setAllUsers(Array.isArray(users) ? users : []);
 
@@ -187,6 +190,15 @@ export default function ChatApp() {
       try {
         const msgList = await fazaaChatApi.getMessages(currentConvId);
         setMessages(Array.isArray(msgList) ? msgList : []);
+
+        if (activeConversation.type === 'group') {
+          const memberRows = await fazaaChatApi.getConversationMembers(currentConvId);
+          const memberUserIds = (memberRows || []).map((m: any) => m.user_id);
+          const matchedMembers = (allUsers || []).filter((u) => u && memberUserIds.includes(u.id));
+          setActiveMembers(matchedMembers);
+        } else {
+          setActiveMembers([]);
+        }
       } catch (err) {
         console.error('Failed to load messages:', err);
       }

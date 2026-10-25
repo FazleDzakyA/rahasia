@@ -18,6 +18,7 @@ export const ProfilePanel: React.FC<{
     currentUser,
     allUsers,
     activeConversation,
+    activeMembers,
     messages,
     showProfilePanel,
     setShowProfilePanel,
@@ -129,25 +130,30 @@ export const ProfilePanel: React.FC<{
         <div className="p-5 space-y-3 border-b border-white/10">
           <div className="flex items-center space-x-2 text-xs font-bold text-white">
             <Users className="w-4 h-4 text-blue-400" />
-            <span>Group Members ({safeUsers.length})</span>
+            <span>Group Members ({(activeMembers?.length || 0) > 0 ? activeMembers.length : 1})</span>
           </div>
 
           <div className="space-y-2">
-            {safeUsers.filter(Boolean).map((u) => (
-              <div key={u.id} className="flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2.5">
-                  <img
-                    src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop'}
-                    alt=""
-                    className="w-7 h-7 rounded-full object-cover"
-                  />
-                  <span className="text-slate-200 truncate">{u.full_name || u.username || 'Member'}</span>
+            {(activeMembers && activeMembers.length > 0
+              ? activeMembers
+              : safeUsers.filter((u) => u && u.id === currentUser?.id)
+            )
+              .filter(Boolean)
+              .map((u) => (
+                <div key={u.id} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-2.5">
+                    <img
+                      src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop'}
+                      alt=""
+                      className="w-7 h-7 rounded-full object-cover"
+                    />
+                    <span className="text-slate-200 truncate">{u.full_name || u.username || 'Member'}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {u.id === currentUser?.id ? 'You' : 'Member'}
+                  </span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {u.id === currentUser?.id ? 'You' : 'Member'}
-                </span>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}
