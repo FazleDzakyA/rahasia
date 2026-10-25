@@ -75,7 +75,12 @@ export const AuthScreen: React.FC = () => {
       const users = await fazaaChatApi.getUsers();
       setAllUsers(users);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Login gagal. Periksa kembali username dan password.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed')) {
+        setErrorMsg('Gagal terhubung ke backend fazaaDB Cloud. Klik "Ubah Server" di bawah untuk menyesuaikan URL tunnel.');
+      } else {
+        setErrorMsg(msg || 'Login gagal. Periksa kembali username dan password.');
+      }
     } finally {
       setLoading(false);
     }
@@ -115,7 +120,12 @@ export const AuthScreen: React.FC = () => {
       const users = await fazaaChatApi.getUsers();
       setAllUsers(users);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Registrasi gagal.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network') || msg.toLowerCase().includes('failed')) {
+        setErrorMsg('Gagal terhubung ke backend fazaaDB Cloud. Klik "Ubah Server" di bawah untuk menyesuaikan URL tunnel.');
+      } else {
+        setErrorMsg(msg || 'Registrasi gagal.');
+      }
     } finally {
       setLoading(false);
     }
@@ -417,8 +427,34 @@ export const AuthScreen: React.FC = () => {
           </form>
         )}
 
+        {/* Server Connection Status Bar */}
+        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+          <div className="flex items-center space-x-1.5 truncate max-w-[220px]">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="text-[10px] text-slate-300 font-mono truncate">
+              {fazaaChatApi.getBaseUrl().replace('https://', '')}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const current = fazaaChatApi.getBaseUrl();
+              const input = prompt(
+                'Masukkan URL Cloudflare Tunnel backend aktif saat ini:',
+                current
+              );
+              if (input !== null) {
+                fazaaChatApi.setServerUrl(input.trim());
+              }
+            }}
+            className="text-blue-400 hover:text-blue-300 font-medium ml-2 px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-[10px] transition-colors"
+          >
+            Ubah Server
+          </button>
+        </div>
+
         {/* Footer info */}
-        <div className="mt-6 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-500">
+        <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-500">
           <span className="flex items-center gap-1">
             <Shield className="w-3 h-3 text-emerald-400" />
             Keamanan fazaaDB WAL
