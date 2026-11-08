@@ -1,5 +1,5 @@
-// Cloudflare tunnel URL - active public endpoint for fazaaDB Cloud
-const FAZAA_CLOUD_URL = 'https://cooking-arising-trucks-standings.trycloudflare.com';
+// Permanent static domain for fazaaDB Cloud via Ngrok
+const FAZAA_CLOUD_URL = 'https://proofing-countable-enlisted.ngrok-free.dev';
 
 const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
@@ -78,6 +78,7 @@ async function request(endpoint: string, options: RequestInit = {}) {
   let url = `${baseUrl}/api/v1/projects/${PROJECT_SLUG}${endpoint}`;
   const headers: Record<string, string> = {
     'x-fazaadb-key': API_KEY,
+    'ngrok-skip-browser-warning': 'true',
     ...(options.headers as Record<string, string>),
   };
 
@@ -388,6 +389,7 @@ export const fazaaChatApi = {
       method: 'POST',
       headers: {
         'x-fazaadb-key': API_KEY,
+        'ngrok-skip-browser-warning': 'true',
       },
       body: formData,
     });
