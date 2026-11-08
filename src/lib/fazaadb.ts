@@ -1,5 +1,5 @@
-// Permanent static domain for fazaaDB Cloud via Ngrok
-const FAZAA_CLOUD_URL = 'https://proofing-countable-enlisted.ngrok-free.dev';
+// Cloudflare tunnel URL - active public endpoint for fazaaDB Cloud
+const FAZAA_CLOUD_URL = 'https://knights-tramadol-creek-alerts.trycloudflare.com';
 
 const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
